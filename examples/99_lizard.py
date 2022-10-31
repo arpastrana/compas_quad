@@ -4,10 +4,12 @@ from time import time
 
 from math import pi, cos, sin
 
-from compas_quad.datastructures import QuadMesh, PseudoQuadMesh, CoarseQuadMesh, CoarsePseudoQuadMesh
+from compas_quad.datastructures import CoarseQuadMesh
 
 from compas_quad.grammar import Lizard
-from compas_quad.grammar.lizard import string_generation_brute, string_generation_random, string_generation_structured
+from compas_quad.grammar import string_generation_brute
+from compas_quad.grammar import string_generation_random
+from compas_quad.grammar import string_generation_structured
 
 from compas.numerical import fd_numpy
 
@@ -44,9 +46,8 @@ def postprocessing(mesh):
 
     return mesh
 
+
 ### parameters ###
-
-
 in_mesh_refinement = 2  # densify the input 1-face quad mesh
 out_mesh_refinement = 4  # densify the ouput quad mesh
 
@@ -60,14 +61,14 @@ brute_string_characters = 'atp'
 brute_string_length = 5
 
 # for 'random' generation
-add_random_strings = False
+add_random_strings = True
 random_string_characters = 'atp'
 random_string_number = 100
 random_string_length = 10
 random_string_ratios = [0.2, 0.5, 0.3]
 
 # for 'structured' construction
-add_structured_strings = True
+add_structured_strings = False
 structured_string_characters = 'atp'
 structured_string_number = 100
 structured_string_length = 10
@@ -122,11 +123,14 @@ if add_brute_strings:
 
 if add_random_strings:
     strings += list(string_generation_random(random_string_characters,
-                                             random_string_number, random_string_length, ratios=random_string_ratios))
+                                             random_string_number,
+                                             random_string_length,
+                                             ratios=random_string_ratios))
 
 if add_structured_strings:
     strings += list(string_generation_structured(structured_string_characters,
-                                                 structured_string_number, structured_string_length))
+                                                 structured_string_number,
+                                                 structured_string_length))
 
 number_strings = len(strings)
 print('strings {}'.format(strings))
@@ -142,7 +146,7 @@ for k, string in enumerate(strings):
     # modifiy topology
     mesh = mesh0.copy()
     lizard = Lizard(mesh)
-    lizard.initiate(tail=tail, head=head)
+    lizard.init(tail=tail, head=head)
     try:
         lizard.from_string_to_rules(string)
 
