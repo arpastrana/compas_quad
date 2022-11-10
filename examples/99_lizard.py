@@ -1,8 +1,12 @@
 import os
+from math import pi, cos, sin
 
 from time import time
 
-from math import pi, cos, sin
+from tqdm import tqdm
+
+from compas.colors import Color
+from compas.geometry import Point
 
 from compas_quad.datastructures import CoarseQuadMesh
 
@@ -13,7 +17,7 @@ from compas_quad.grammar import string_generation_structured
 
 from compas.numerical import fd_numpy
 
-from compas_view2.app import App
+from compas_plotters import Plotter
 
 
 def postprocessing(mesh):
@@ -58,27 +62,31 @@ given_strings = ['attta']
 # for 'brute' force enumeration
 add_brute_strings = False
 brute_string_characters = 'atp'
-brute_string_length = 5
+brute_string_length = 10
 
 # for 'random' generation
-add_random_strings = True
+add_random_strings = False
 random_string_characters = 'atp'
+random_string_seed = 29
 random_string_number = 100
 random_string_length = 10
 random_string_ratios = [0.2, 0.5, 0.3]
 
 # for 'structured' construction
-add_structured_strings = False
+add_structured_strings = True
+structured_string_seed = 29
 structured_string_characters = 'atp'
-structured_string_number = 100
+structured_string_number = 200
 structured_string_length = 10
 
+edgecolor = Color.black()
+facecolor = Color.grey().lightened(80)
+
 postprocess = True
-
-view = True
-condensed_view = True
-
+plot = True
 export = False
+
+filepath_plot = "/Users/arpj/Desktop/patterns.pdf"
 
 ### intialise ###
 
@@ -94,10 +102,7 @@ coarse.strips_density(in_mesh_refinement)
 coarse.densification()
 mesh0 = coarse.dense_mesh()
 mesh0.collect_strips()
-
-if view:
-    viewer = App(width=1600, height=900)
-    viewer.add(mesh0)
+num_boundaries_init = len(mesh0.vertices_on_boundaries())
 
 ### lizard - let's grooow! ###
 
@@ -125,12 +130,14 @@ if add_random_strings:
     strings += list(string_generation_random(random_string_characters,
                                              random_string_number,
                                              random_string_length,
-                                             ratios=random_string_ratios))
+                                             ratios=random_string_ratios,
+                                             seed=random_string_seed))
 
 if add_structured_strings:
     strings += list(string_generation_structured(structured_string_characters,
                                                  structured_string_number,
-                                                 structured_string_length))
+                                                 structured_string_length,
+                                                 structured_string_seed))
 
 number_strings = len(strings)
 print('strings {}'.format(strings))
@@ -141,35 +148,49 @@ t0 = time()
 meshes = []
 successful_strings, failed_strings = [], []
 
-for k, string in enumerate(strings):
+print("\nTransforming strings to meshes")
+for k, string in enumerate(tqdm(strings)):
 
+    # print()
     # modifiy topology
     mesh = mesh0.copy()
     lizard = Lizard(mesh)
     lizard.init(tail=tail, head=head)
     try:
         lizard.from_string_to_rules(string)
+        # print("Happy lizard")
+        mesh.unify_cycles()
+        # print("Unified cycles")
 
         # export
         if export:
             HERE = os.path.dirname(__file__)
-            FILE = os.path.join(
-                HERE, 'data/{}_{}.json'.format(in_mesh_refinement, string))
+            FILE = os.path.join(HERE, 'data/{}_{}.json'.format(in_mesh_refinement, string))
             mesh.to_json(FILE)
 
         # geometrical processing
         if postprocess:
             mesh = postprocessing(mesh)
-            mesh = CoarseQuadMesh.from_vertices_and_faces(
-                *mesh.to_vertices_and_faces())
+            mesh = CoarseQuadMesh.from_vertices_and_faces(*mesh.to_vertices_and_faces())
             mesh.collect_strips()
             mesh.strips_density(out_mesh_refinement)
             mesh.densification()
             mesh = mesh.dense_mesh()
             mesh = postprocessing(mesh)
 
-        meshes.append(mesh.copy())
+            # TODO: fix lizard to avoid non-manifoldness
+            # manifoldness
+            if not mesh.is_manifold():
+                print("not manifold, dude!")
+                continue
 
+            # discard meshes with internal holes
+            if len(mesh.vertices_on_boundaries()) > num_boundaries_init:
+                print("Number of boundaries changed. Skipping lizard walk.")
+                continue
+
+            # print("post-processed!")
+        meshes.append(mesh.copy())
         successful_strings.append(string)
 
     except:
@@ -183,13 +204,39 @@ print('computation time {}s'.format(round(t1 - t0, 3)))
 print('{} / {} successes ({} ratio)'.format(int(len(successful_strings)),
                                             int(number_strings), round(len(successful_strings) / number_strings, 2)))
 
-# visualisation
-if view:
+if plot:
+
+    print("\nPlotting")
+
+    plotter = Plotter(figsize=(16, 9), dpi=200)
+
     n = len(meshes)
-    for k, mesh in enumerate(meshes):
+    for k, mesh in enumerate(tqdm(meshes)):
+
+        # add mesh to viewer
         n2 = int(n ** 0.5)
         i = int(k / n2)
         j = int(k % n2)
         mesh.move([1.5 * (i + 1), 1.5 * (j + 1), 0.0])
-        viewer.add(mesh)
-    viewer.show()
+
+        plotter.add(mesh,
+                    show_vertices=False,
+                    show_faces=True,
+                    edgewidth=0.7,
+                    edgecolor={edge: edgecolor for edge in mesh.edges()},
+                    facecolor={face: facecolor for face in mesh.faces()})
+
+        # add singularities to viewer
+        for vkey in mesh.vertices():
+            if mesh.is_vertex_singular(vkey):
+                plotter.add(Point(*mesh.vertex_coordinates(vkey)),
+                            size=4,
+                            # edgecolor=None,
+                            facecolor=Color.magenta())
+
+    print("Zooming in...")
+    plotter.zoom_extents()
+    print("Saving...")
+    plotter.save(filepath_plot)
+
+print("Done!")
