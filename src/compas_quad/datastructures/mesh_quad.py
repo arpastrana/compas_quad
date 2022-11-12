@@ -133,8 +133,18 @@ class QuadMesh(Mesh):
         """
         return [vkey for vkey in self.vertices() if self.is_vertex_singular(vkey)]
 
+    def number_of_singularities(self):
+        """Count the number of singularities in the quad mesh.
+
+        Returns
+        -------
+        number : int
+            The number of singularities.
+        """
+        return len(self.singularities())
+
     def vertex_topo_index(self, vkey):
-        """Compute vertex index.
+        """Compute the topological index of a vertex of the quad mesh.
 
         Parameters
         ----------
@@ -149,11 +159,28 @@ class QuadMesh(Mesh):
         """
 
         if self.vertex_degree(vkey) == 0:
-            return 0
+            return 0.0
 
         regular_valency = 4 if not self.is_vertex_on_boundary(vkey) else 3
 
-        return (regular_valency - self.vertex_degree(vkey)) / 4
+        return (regular_valency - self.vertex_degree(vkey)) / 4.0
+
+    def vertices_topo_index(self):
+        """Compute the topological index of the vertices of the quad mesh.
+
+        Parameters
+        ----------
+        vkey : int
+            The vertex key.
+
+        Returns
+        -------
+        int
+            Vertex index.
+
+        """
+        for vkey in self.vertices():
+            yield self.vertex_topo_index(vkey)
 
     # --------------------------------------------------------------------------
     # polyedges
