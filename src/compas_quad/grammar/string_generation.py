@@ -1,10 +1,11 @@
 from itertools import product
 from random import random
 from random import seed as random_seed
+from tqdm import tqdm
 
 
 def string_generation_brute(characters, length):
-    for letters in product(characters, repeat=length):
+    for letters in tqdm(product(characters, repeat=length), total=len(characters) ** length):
         yield ''.join(letters)
 
 
@@ -13,7 +14,7 @@ def string_generation_random(characters, number, length, ratios=None, seed=None)
         ratios = [1.0 / len(characters)] * len(characters)
 
     random_seed(seed)
-    for _ in range(number):
+    for _ in tqdm(range(number)):
         string = ''
         for _ in range(length):
             x = random()
@@ -28,7 +29,7 @@ def string_generation_structured(characters, number, length, seed=None):
 
     random_seed(seed)
 
-    for _ in range(number):
+    for _ in tqdm(range(number)):
         string = ''
         polyedge_length = 0  # number of 't' between odd and even pari of 'a'
 
