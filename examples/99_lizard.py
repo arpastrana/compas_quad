@@ -18,8 +18,10 @@ from compas_quad.grammar import Lizard
 from compas_quad.grammar import string_generation_brute
 from compas_quad.grammar import string_generation_random
 from compas_quad.grammar import string_generation_structured
+
 from compas_quad.grammar import string_generation_markov
 from compas_quad.grammar import string_generation_markov_budget
+from compas_quad.grammar import string_generation_markov_sentence
 
 from compas_quad.grammar import mesh_features_topology
 from compas_quad.grammar import features_key
@@ -45,9 +47,9 @@ add_given_strings = False
 given_strings = ['attta']
 
 # for 'brute' force enumeration
-add_brute_strings = False
+add_brute_strings = True
 brute_string_characters = 'atp'
-brute_string_length = 10
+brute_string_length = 15
 
 # for 'random' generation
 add_random_strings = False
@@ -85,31 +87,52 @@ markov_p_transition = [[0.2, 0.4, 0.4],
                        [0.2, 0.4, 0.4]]
 
 # for 'budgeted markovian' construction
-add_markov_budget_strings = True
-markov_budget_string_characters = 'tp'
-markov_budget_sentences_number = 10000
+# it will add an 'addition' or a translation word at random
+# by default, the last word is an 'addition' word
+add_markov_budget_strings = False
+markov_budget_string_seed = 43
+markov_budget_string_characters = 'tp'  # turn, pivot
+markov_budget_sentences_number = 1
 markov_budget_words_number = 3
-markov_budget_characters_number = 10
+markov_budget_characters_number = 15
 # starting probabilities for t, p
 # if set to None, it will be calculated automatically as the
 # stationary distribution of the Markov chain
+markov_budget_p_init = [0.5, 0.5]
 # probability transition matrix from one state to another
 # rows represent the states at step t, and colums at step t+1
 # |T to T    T to P|
 # |P to T    P to P|
-markov_budget_string_seed = 43
-markov_budget_p_init = [0.45, 0.45, 0.0]
 markov_budget_p_transition = [[0.6, 0.4],
                               [0.4, 0.6]]
 
 
-# markov_budget_p_init = [0.45, 0.45, 0.0]
+# for 'sentence markovian' construction
+# it will add an 'addition' or a 'translation' word at random
+add_markov_sentence_strings = False
+markov_sentence_seed = 43
+markov_sentence_sentences_num = 100000
+markov_sentence_words_per_sentence_num = 3
+markov_sentence_word_length_max = 10
+markov_sentence_word_characters = 'tps'  # turn, pivot, stop
+markov_sentence_stop_character = 's'  # turn, pivot, stop
+
+# probability [0.0-1.0] a word is an addition word
+# the prob of a translation is 1.0 - p_addition
+markov_sentence_p_word_addition = 0.6
+
+# starting probabilities for t, p, s
+# if set to None, it will be calculated automatically as the
+# stationary distribution of the Markov chain
+markov_sentence_p_init = [0.5, 0.45, 0.05]  # small chance the first character in a word is a stop
 # probability transition matrix from one state to another
 # rows represent the states at step t, and colums at step t+1
 # |T to T    T to P    T to S|
 # |P to T    P to P    P to S|
-# markov_budget_p_transition = [[0.5, 0.3, 0.2],
-#                               [0.3, 0.5, 0.2]]
+# |S to T    S to P    S to S|
+markov_sentence_p_transition = [[0.55, 0.4, 0.05],
+                                [0.4, 0.55, 0.05],
+                                [0.0, 0.0, 1.0]]
 
 # visualization
 edgecolor = Color.black()
@@ -199,6 +222,19 @@ if add_markov_budget_strings:
                                                     markov_budget_p_init,
                                                     markov_budget_p_transition,
                                                     markov_budget_string_seed))
+if add_markov_sentence_strings:
+    print("*** Generating Markov sentence strings ***")
+    strings += list(string_generation_markov_sentence(markov_sentence_word_characters,
+                                                      markov_sentence_sentences_num,
+                                                      markov_sentence_words_per_sentence_num,
+                                                      markov_sentence_word_length_max,
+                                                      markov_sentence_p_word_addition,
+                                                      markov_sentence_p_init,
+                                                      markov_sentence_p_transition,
+                                                      markov_sentence_stop_character,
+                                                      markov_sentence_seed))
+if not strings:
+    raise "No strings have been generated!"
 
 unique_strings = set(strings)
 number_strings = len(strings)

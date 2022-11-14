@@ -6,6 +6,8 @@ from typing import Optional
 
 import numpy as np
 
+from tqdm import tqdm
+
 from scipy.stats import bernoulli
 from scipy.stats import multinomial
 
@@ -32,19 +34,29 @@ def normalize_rows(p_array: np.array) -> np.array:
 
 def markov_sequence(p_init: np.array,
                     p_transition: np.array,
-                    sequence_length: int) -> List[int]:
+                    sequence_length: int,
+                    stop_state: Optional[int] = None) -> List[int]:
     """
-    Generate a Markov sequence based on p_init and p_transition.
+    Generate a Markov sequence of integer states based on p_init and p_transition.
     """
     assert np.allclose(np.sum(p_init), 1.0)
     assert np.allclose(np.sum(p_transition), p_transition.shape[0])
 
-    initial_state = list(multinomial.rvs(1, p_init)).index(1)
+    states = []
 
-    states = [initial_state]
+    initial_state = list(multinomial.rvs(1, p_init)).index(1)
+    if initial_state == stop_state:
+        return states
+
+    states.append(initial_state)
+
     for _ in range(sequence_length - 1):
         p_tr = p_transition[states[-1]]
         new_state = list(multinomial.rvs(1, p_tr)).index(1)
+
+        if new_state == stop_state:
+            break
+
         states.append(new_state)
 
     return states
@@ -129,24 +141,35 @@ def string_generation_markov_budget(characters: str,
         yield sentence
 
 
-def string_generation_markov_budget_turbo(characters: str,
-                                    num_sentences: int,
-                                    num_words: int,
-                                    num_characters: int,
-                                    p_init: np.array,
-                                    p_transition: np.array,
-                                    seed: int):
+def string_generation_markov_sentence(characters: str,
+                                      num_sentences: int,
+                                      num_words: int,
+                                      num_characters_per_word: int,
+                                      p_word: float,
+                                      p_characters_init: np.array,
+                                      p_characters_transition: np.array,
+                                      stop_char: Optional[str] = None,
+                                      seed: Optional[int] = None) -> str:
     # set random seed
     np.random.seed(seed=seed)
 
     # create mapping of indices to rules
     rules = {i: rule for i, rule in enumerate(characters)}
 
+    # stop index
+    stop_idx = characters.find(stop_char)
+    if stop_idx < 0:
+        raise ValueError(f"Stop character {stop_char} was not found in {characters}. Try again.")
+
+    # swap variables
+    p_init = p_characters_init
+    p_transition = p_characters_transition
+
     # vectorize inputs
     p_transition = np.array(p_transition)
 
     # compute p_init from equilibrium distribution
-    if p_init is None:
+    if p_characters_init is None:
         p_init = equilibrium_distribution(p_transition)
     p_init = np.array(p_init)
 
@@ -154,31 +177,29 @@ def string_generation_markov_budget_turbo(characters: str,
     p_init = normalize_rows(p_init).ravel()
     p_transition = normalize_rows(p_transition)
 
-    for i in range(num_sentences):
+    for i in tqdm(range(num_sentences)):
 
         sentence = ''
+
         for j in range(num_words):
 
-            # list(multinomial.rvs(1, p_init)).index(1)
-            initial_state = bernoulli.rvs(p=p_init)
-
             # markov chain
-            states = [initial_state]
-            for _ in range(num_characters - 1):
-                p_tr = p_transition[states[-1]]
-                new_state = list(multinomial.rvs(1, p_tr)).index(1)
-                states.append(new_state)
+            sequence = markov_sequence(p_init,
+                                       p_transition,
+                                       num_characters_per_word,
+                                       stop_idx)
 
             word = sequence_to_grammar_string(sequence, rules)
 
+            # skip empty words
+            if not word:
+                continue
+
             # sample word type
-            # if word type is stop, break
-            x = random()
-            if x > 0.5 or j == num_words - 1:
-                word = 'a' + word[:-2] + 'a'
+            addition_word = bernoulli.rvs(p=p_word)
+            if addition_word:  # state 0 is add, state 1 is move
+                word = 'a' + word + 'a'
 
             sentence += word
 
-        # print()
-        # print(sentence)
         yield sentence
