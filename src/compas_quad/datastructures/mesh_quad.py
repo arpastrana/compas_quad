@@ -153,8 +153,8 @@ class QuadMesh(Mesh):
 
         Returns
         -------
-        int
-            Vertex index.
+        index : float
+            The vertex index.
 
         """
 
@@ -166,7 +166,24 @@ class QuadMesh(Mesh):
         return (regular_valency - self.vertex_degree(vkey)) / 4.0
 
     def vertices_topo_index(self):
-        """Compute the topological index of the vertices of the quad mesh.
+        """Iterate over the topological index of the vertices of the quad mesh.
+
+        Parameters
+        ----------
+        vkey : int
+            The vertex key.
+
+        Yields
+        -------
+        index : float
+            The next vertex index.
+
+        """
+        for vkey in self.vertices():
+            yield self.vertex_topo_index(vkey)
+
+    def vertex_topo_index_neighborhood(self, vkey):
+        """Compute the topological index of the first-ring neighborhood of a vertex of the quad mesh.
 
         Parameters
         ----------
@@ -175,12 +192,34 @@ class QuadMesh(Mesh):
 
         Returns
         -------
-        int
-            Vertex index.
+        index : float
+            The vertex index.
+
+        Notes
+        -----
+        The neighborhood index is calculated as the sum of the individual topological indices of
+        all the nodes connected to node `vkey`.
+
+        """
+        indices = (self.vertex_topo_index(nkey) for nkey in self.vertex_neighbors(vkey))
+        return sum(indices)
+
+    def vertices_topo_index_neighborhood(self):
+        """Iterate over the first-ring neighborhood topological index of the vertices of the quad mesh.
+
+        Parameters
+        ----------
+        vkey : int
+            The vertex key.
+
+        Returns
+        -------
+        index : float
+            The next vertex index.
 
         """
         for vkey in self.vertices():
-            yield self.vertex_topo_index(vkey)
+            yield self.vertex_topo_index_neighborhood(vkey)
 
     # --------------------------------------------------------------------------
     # polyedges
