@@ -44,12 +44,28 @@ out_mesh_refinement = 3  # densify the ouput quad mesh
 
 # for 'given' production (try: ata, attta, d, atttad, attpptta ...)
 add_given_strings = False
-given_strings = ['attta']
+# given_strings = ['attta']
+# given_strings = ['pptappttpppa', 'tapptppta', 'ttttttppppptttappppptta']
+# given_strings = ['pppttpattpttppa', 'pptpptptttppppapptttpta', 'pppppppatptptta', 'tppptpptapttttppa']
+given_strings = ['aptttpttaa',
+                 'aptttpttpa',
+                 'tattptttaa',
+                 'atptttppta',
+                 'patttpttpa',
+                 'tattptttpa',
+                 'patttpttaa']
+
+# given_strings = ['apttttttaa',
+# 'apttttttpa',
+# 'pattttttpa',
+# 'pattttttaa']
+
+given_strings = ['attptttpta', 'atptttptta']
 
 # for 'brute' force enumeration
 add_brute_strings = True
 brute_string_characters = 'atp'
-brute_string_length = 15
+brute_string_length = 12
 
 # for 'random' generation
 add_random_strings = False
@@ -106,20 +122,19 @@ markov_budget_p_init = [0.5, 0.5]
 markov_budget_p_transition = [[0.6, 0.4],
                               [0.4, 0.6]]
 
-
 # for 'sentence markovian' construction
 # it will add an 'addition' or a 'translation' word at random
 add_markov_sentence_strings = False
 markov_sentence_seed = 43
-markov_sentence_sentences_num = 100000
+markov_sentence_sentences_num = 1000
 markov_sentence_words_per_sentence_num = 3
-markov_sentence_word_length_max = 10
+markov_sentence_word_length_max = 7
 markov_sentence_word_characters = 'tps'  # turn, pivot, stop
-markov_sentence_stop_character = 's'  # turn, pivot, stop
+markov_sentence_stop_character = 's'  # stop
 
 # probability [0.0-1.0] a word is an addition word
 # the prob of a translation is 1.0 - p_addition
-markov_sentence_p_word_addition = 0.6
+markov_sentence_p_word_addition = 0.7
 
 # starting probabilities for t, p, s
 # if set to None, it will be calculated automatically as the
@@ -167,6 +182,7 @@ num_boundaries_init = len(mesh0.vertices_on_boundaries())
 
 # position marker
 for u, v in mesh0.edges_on_boundary():
+
     if mesh0.vertex_degree(u) == 2:
         tail, head = u, v
         break
@@ -304,6 +320,15 @@ for string, mesh in zip(successful_strings, meshes):
 
 number_unique_meshes_pre = len(featkey_stringmesh)
 
+num_fail_duplicated = num_lizard_strings - number_unique_meshes_pre
+
+for featkey, stringmesh in tqdm(featkey_stringmesh.items(), total=len(featkey_stringmesh)):
+    if len(stringmesh) > 10:
+        continue
+    print(featkey)
+    for string, mesh in stringmesh.items():
+        print("\t", string)
+
 # ==============================================================================
 # Main function: directional_clustering
 # ==============================================================================
@@ -333,7 +358,6 @@ if postprocess:
                 mesh.densification()
                 mesh = mesh.dense_mesh()
                 mesh = smooth_mesh_fd(mesh)
-
             except:
                 num_fail_smooth += 1
                 deletable.append(string)
@@ -367,8 +391,6 @@ if postprocess:
 # ==============================================================================
 # Main function: directional_clustering
 # ==============================================================================
-
-num_fail_duplicated = num_lizard_strings - number_unique_meshes_pre
 
 for featkey in deletable_featkeys:
     del featkey_stringmesh[featkey]
@@ -429,8 +451,10 @@ if plot:
                                          total=number_unique_meshes):
 
         meshes = list(stringmesh.values())
+
         if len(meshes) < 1:
             continue
+
         mesh = meshes[0]  # take the first mesh
 
         # add mesh to viewer
@@ -438,6 +462,7 @@ if plot:
         i = int(k / n2)
         j = int(k % n2)
         mesh.move([1.5 * (i + 1), 1.5 * (j + 1), 0.0])
+        k += 1
 
         plotter.add(mesh,
                     show_vertices=False,
@@ -457,5 +482,45 @@ if plot:
     plotter.zoom_extents()
     print("Saving...")
     plotter.save(filepath_plot)
+
+    print("\nPlotting")
+
+    # n = number_unique_meshes  * 3
+    # k = 0
+    # for _, (featkey, stringmesh) in tqdm(enumerate(featkey_stringmesh.items()),
+    #                                      total=number_unique_meshes):
+
+    #     meshes = list(stringmesh.values())
+    #     if len(meshes) < 1:
+    #         continue
+
+    #     for mesh in meshes:
+    #         # mesh = meshes[0]  # take the first mesh
+
+    #         # add mesh to viewer
+    #         n2 = int(n ** 0.5)
+    #         i = int(k / n2)
+    #         j = int(k % n2)
+    #         mesh.move([1.5 * (i + 1), 1.5 * (j + 1), 0.0])
+    #         k += 1
+
+    #         plotter.add(mesh,
+    #                     show_vertices=False,
+    #                     show_faces=True,
+    #                     edgewidth=0.7,
+    #                     edgecolor={edge: edgecolor for edge in mesh.edges()},
+    #                     facecolor={face: facecolor for face in mesh.faces()})
+
+    #         # add singularities to viewer
+    #         for vkey in mesh.singularities():
+    #             plotter.add(Point(*mesh.vertex_coordinates(vkey)),
+    #                         size=4,
+    #                         # edgecolor=None,
+    #                         facecolor=Color.magenta())
+
+    # print("Zooming in...")
+    # plotter.zoom_extents()
+    # print("Saving...")
+    # plotter.save(filepath_plot)
 
 print("\nDone!")

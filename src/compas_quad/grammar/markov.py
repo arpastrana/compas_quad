@@ -13,6 +13,9 @@ from scipy.stats import multinomial
 
 
 def equilibrium_distribution(p_transition: np.array) -> np.array:
+    """
+    Get the equilibrium distribution of an ongoing markov chain.
+    """
     n_states = p_transition.shape[0]
 
     A = np.append(arr=p_transition.T - np.eye(n_states),
@@ -197,7 +200,7 @@ def string_generation_markov_sentence(characters: str,
 
             # sample word type
             addition_word = bernoulli.rvs(p=p_word)
-            if addition_word:  # state 0 is add, state 1 is move
+            if addition_word:  # state 1 is add, state 0 is move
                 word = 'a' + word + 'a'
 
             sentence += word

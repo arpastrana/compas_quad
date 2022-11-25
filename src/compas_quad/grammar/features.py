@@ -6,17 +6,20 @@ __all__ = ["mesh_features_topology",
            "revert_features_key"]
 
 
+TOPO_INDICES = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
+
+
 def mesh_features_topology(mesh):
     """
     Calculate the topological features of a quad mesh.
 
     The resulting feature vector is a list of length N and has this structure:
 
-        |# vertices  # edges  # strips  # singularities  || # vertices per topological index|
+        |# vertices  # edges  # strips  # singularities  || # vertices per individual topological index || # vertices per neighborhood topological index|
 
     where || denotes concatenation.
 
-    The supported topological index of the vertices lie in the range [-1, 1], in 0.25 steps:
+    The individual and the neighborhood topological index of a vertex lies in the range [-1, 1], in 0.25 steps:
 
         |<-1  -1  -0.75  -0.5  -0.25  0.0  +0.25  +0.5  +0.75  +1  >+1|
     """
@@ -29,8 +32,11 @@ def mesh_features_topology(mesh):
     for descriptor in topo_descriptors:
         features.append(getattr(mesh, descriptor)())
 
-    counts = mesh_number_vertices_per_topo_index(mesh)
-    features.extend(counts)
+    for index_counter in (mesh_number_vertices_per_topo_index,
+                          mesh_number_vertices_per_topo_index_neighborhood
+                          ):
+        counts = index_counter(mesh)
+        features.extend(counts)
 
     return features
 
@@ -43,28 +49,21 @@ def mesh_number_vertices_per_topo_index(mesh):
 
         |<-1  -1  -0.75  -0.5  -0.25  0.0  +0.25  +0.5  +0.75  +1  >+1|
     """
-    topo_indices = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
+    return histogram(data=mesh.vertices_topo_index(), bins=TOPO_INDICES)
 
-    counter = Counter((float(index) for index in mesh.vertices_topo_index()))
 
-    counts = []
-    for topo_index in topo_indices:
-        count = counter.get(topo_index) or 0
-        counts.append(count)
+def mesh_number_vertices_per_topo_index_neighborhood(mesh):
+    """
+    Compute the number of vertices per neighborhood topological index in the mesh.
 
-    # deal with the extrema
-    count_low = 0
-    count_high = 0
-    for key in set(counter.keys()) - set(topo_indices):
-        if key < topo_indices[0]:
-            count_low += 1
-        elif key > topo_indices[-1]:
-            count_high += 1
+    The neighbor-aggregated index of a vertex is calculated as the sum of the
+    topological indices the first-ring neighbors of the vertex.
 
-    counts.append(count_high)
-    counts.insert(0, count_low)
+    The supported topological index of the vertices are ordered and lie in the range [-1, 1], in 0.25 steps:
 
-    return counts
+        |<-1  -1  -0.75  -0.5  -0.25  0.0  +0.25  +0.5  +0.75  +1  >+1|
+    """
+    return histogram(data=mesh.vertices_topo_index_neighborhood(), bins=TOPO_INDICES)
 
 
 def features_key(features, precision="d"):
@@ -86,8 +85,28 @@ def revert_features_key(gkey):
     return [float(i) for i in xyz]
 
 
-if __name__ == "__main__":
-    features = [10, 4, 8, 6, 5, 2, 0, -1]
-    key = feature_key(features, precision='d')
-    print(key)
-    print(revert_feature_key(feature_key(features)))
+def histogram(data, bins, include_outliers=True):
+    """
+    Count the number of occurences per bin in the data.
+    """
+    counter = Counter((float(d) for d in data))
+
+    counts = []
+    for topo_index in bins:
+        count = counter.get(topo_index) or 0
+        counts.append(count)
+
+    # deal with the extrema
+    if include_outliers:
+        count_low = 0
+        count_high = 0
+        for key in set(counter.keys()) - set(bins):
+            if key < bins[0]:
+                count_low += 1
+            elif key > bins[-1]:
+                count_high += 1
+
+        counts.append(count_high)
+        counts.insert(0, count_low)
+
+    return counts
