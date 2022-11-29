@@ -63,7 +63,7 @@ given_strings = ['aptttpttaa',
 given_strings = ['attptttpta', 'atptttptta']
 
 # for 'brute' force enumeration
-add_brute_strings = True
+add_brute_strings = False
 brute_string_characters = 'atp'
 brute_string_length = 12
 
@@ -124,11 +124,11 @@ markov_budget_p_transition = [[0.6, 0.4],
 
 # for 'sentence markovian' construction
 # it will add an 'addition' or a 'translation' word at random
-add_markov_sentence_strings = False
+add_markov_sentence_strings = True
 markov_sentence_seed = 43
-markov_sentence_sentences_num = 1000
+markov_sentence_sentences_num = 100000
 markov_sentence_words_per_sentence_num = 3
-markov_sentence_word_length_max = 7
+markov_sentence_word_length_max = 10
 markov_sentence_word_characters = 'tps'  # turn, pivot, stop
 markov_sentence_stop_character = 's'  # stop
 
